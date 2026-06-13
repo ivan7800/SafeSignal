@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.3.0
+
+- Ajustado `manifest.json` a la versión correcta.
+- Mejorado el enlace SMS para compatibilidad iOS/Android.
+- Mejorados enlaces `mailto:` para abrir mejor clientes de correo.
+- Clampeada la cuenta atrás a valores seguros.
+- Mejorada la estrategia del service worker para actualizar mejor GitHub Pages sin perder modo offline.
+
 ## 1.2.0
 
 - Corregido el modo discreto para que siempre pueda volver al modo normal.

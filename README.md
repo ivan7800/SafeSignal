@@ -8,7 +8,7 @@ Está hecha con **HTML, CSS y JavaScript puro**, sin backend, sin login y sin de
 
 ## Funciones
 
-Versión actual: **1.2.0**.
+Versión actual: **1.3.0**.
 
 - Botón SOS con cuenta atrás cancelable.
 - Obtención de ubicación aproximada mediante el navegador.

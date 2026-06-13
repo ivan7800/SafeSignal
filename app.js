@@ -276,7 +276,7 @@ function saveSettingsFromForm() {
   state.settings.supportWhatsapp = normalizePhone(elements.supportWhatsapp.value) || '+34600000016';
   state.settings.supportEmail = normalizeEmail(elements.supportEmail.value) || '016-online@igualdad.gob.es';
   state.settings.fakeCallerName = elements.fakeCallerName.value.trim().slice(0, 60) || 'Mamá';
-  state.settings.countdownSeconds = Number(elements.countdownSeconds.value) || 5;
+  state.settings.countdownSeconds = normalizeCountdown(elements.countdownSeconds.value, 5);
   state.settings.vibrationEnabled = elements.vibrationEnabled.checked;
   state.settings.autoShareAfterCountdown = elements.autoShareAfterCountdown.checked;
   saveState();
@@ -293,7 +293,7 @@ function updateEmergencyLinks() {
   elements.callEmergencyModalBtn.href = `tel:${emergency}`;
   elements.callSupportBtn.href = `tel:${support}`;
   elements.whatsappSupportBtn.href = supportWhatsapp ? buildWhatsAppLink(supportWhatsapp, 'Necesito información o ayuda.') : '#';
-  elements.emailSupportBtn.href = supportEmail ? `mailto:${encodeURIComponent(supportEmail)}` : '#';
+  elements.emailSupportBtn.href = supportEmail ? `mailto:${supportEmail}` : '#';
 }
 
 function normalizeDialValue(value) {
@@ -301,7 +301,16 @@ function normalizeDialValue(value) {
 }
 
 function normalizeEmail(value) {
-  return String(value || '').trim().toLowerCase().slice(0, 120);
+  return String(value || '').trim().toLowerCase().replace(/[\s<>"'`]/g, '').slice(0, 120);
+}
+
+function isValidEmail(value) {
+  return /^\S+@\S+\.\S+$/.test(String(value || ''));
+}
+
+function normalizeCountdown(value, fallback = 5) {
+  const n = Number(value);
+  return [3, 5, 10].includes(n) ? n : fallback;
 }
 
 function saveContactFromForm(event) {
@@ -321,7 +330,7 @@ function saveContactFromForm(event) {
     toast('Añade teléfono, WhatsApp o email.');
     return;
   }
-  if (email && !/^\S+@\S+\.\S+$/.test(email)) {
+  if (email && !isValidEmail(email)) {
     toast('El email no parece válido.');
     return;
   }
@@ -409,7 +418,7 @@ function normalizePhone(value) {
 }
 
 function cryptoRandomId() {
-  if (window.crypto?.randomUUID) return crypto.randomUUID();
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
   return `id-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
@@ -438,7 +447,7 @@ function saveSettingsFromFormQuietly() {
   state.settings.supportWhatsapp = normalizePhone(elements.supportWhatsapp.value) || state.settings.supportWhatsapp || '+34600000016';
   state.settings.supportEmail = normalizeEmail(elements.supportEmail.value) || state.settings.supportEmail || '016-online@igualdad.gob.es';
   state.settings.fakeCallerName = elements.fakeCallerName.value.trim().slice(0, 60) || state.settings.fakeCallerName || 'Mamá';
-  state.settings.countdownSeconds = Number(elements.countdownSeconds.value) || state.settings.countdownSeconds || 5;
+  state.settings.countdownSeconds = normalizeCountdown(elements.countdownSeconds.value, state.settings.countdownSeconds || 5);
   state.settings.vibrationEnabled = elements.vibrationEnabled.checked;
   state.settings.autoShareAfterCountdown = elements.autoShareAfterCountdown.checked;
   saveState();
@@ -608,7 +617,12 @@ function renderContactActions(payload) {
 
 function buildSmsLink(phone, text) {
   const recipient = normalizePhone(phone);
-  return `sms:${recipient}?body=${encodeURIComponent(text)}`;
+  const separator = isIOSDevice() ? '&' : '?';
+  return `sms:${recipient}${separator}body=${encodeURIComponent(text)}`;
+}
+
+function isIOSDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 }
 
 function buildWhatsAppLink(phone, text) {
@@ -618,7 +632,7 @@ function buildWhatsAppLink(phone, text) {
 
 function buildEmailLink(email, text) {
   const recipient = normalizeEmail(email);
-  return `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent('SafeSignal - necesito ayuda')}&body=${encodeURIComponent(text)}`;
+  return `mailto:${recipient}?subject=${encodeURIComponent('SafeSignal - necesito ayuda')}&body=${encodeURIComponent(text)}`;
 }
 
 function handleContactActionClick(event) {
@@ -846,7 +860,7 @@ function exportData() {
   const exportObject = {
     exportedAt: new Date().toISOString(),
     app: 'SafeSignal',
-    version: '1.2.0',
+    version: '1.3.0',
     data: state
   };
   const blob = new Blob([JSON.stringify(exportObject, null, 2)], { type: 'application/json' });
