@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10151f">
+  <meta name="description" content="SafeSignal: asistencia rápida, discreta y privada en situaciones de riesgo.">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SafeSignal">
+  <title>SafeSignal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <noscript>
+    <div class="noscript">SafeSignal necesita JavaScript para preparar mensajes, ubicación y acciones rápidas.</div>
+  </noscript>
+
+  <div id="app" class="app-shell">
+    <header class="topbar safe-area-top">
+      <button id="stealthExitHotspot" class="brand" type="button" aria-label="SafeSignal">
+        <span class="brand-mark" aria-hidden="true">S</span>
+        <span>
+          <strong data-normal="SafeSignal" data-stealth="Notas">SafeSignal</strong>
+          <small data-normal="Asistencia rápida y discreta" data-stealth="Bloc privado">Asistencia rápida y discreta</small>
+        </span>
+      </button>
+      <div class="top-actions">
+        <button id="installBtn" class="ghost small mode-normal-only hidden" type="button">Instalar</button>
+        <button id="stealthToggleBtn" class="ghost small mode-normal-only" type="button" aria-pressed="false">Modo discreto</button>
+        <button id="stealthReturnBtn" class="ghost small mode-stealth-only" type="button">Volver</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="hero card" data-section="home">
+        <div class="status-row">
+          <span id="privacyBadge" class="badge">Privado · local</span>
+          <span id="permissionBadge" class="badge muted">Ubicación pendiente</span>
+        </div>
+
+        <div class="normal-panel">
+          <h1>Ayuda rápida en un toque</h1>
+          <p class="lead">Prepara un aviso con tu ubicación aproximada y permite compartirlo por las apps del móvil. No envía nada sin tu confirmación.</p>
+        </div>
+
+        <div class="stealth-panel hidden">
+          <h1>Notas rápidas</h1>
+          <p class="lead">Bloc local sin conexión. Usa Volver o mantén pulsado el título superior para salir.</p>
+          <textarea id="stealthNote" class="stealth-note" placeholder="Escribe una nota privada..." spellcheck="false"></textarea>
+          <div class="row-actions">
+            <button id="saveStealthNoteBtn" class="secondary" type="button">Guardar nota</button>
+            <button id="stealthReturnPanelBtn" class="ghost" type="button">Volver</button>
+            <button id="hiddenSignalBtn" class="ghost" type="button" aria-label="Acción rápida oculta">·</button>
+          </div>
+        </div>
+
+        <div class="normal-panel action-stack">
+          <button id="panicBtn" class="panic-button" type="button" aria-describedby="panicHelp">
+            <span>Necesito ayuda</span>
+            <small>Toca para iniciar cuenta atrás</small>
+          </button>
+          <p id="panicHelp" class="microcopy">Primero verás una cuenta atrás para cancelar. Después se preparará el aviso con ubicación si el móvil lo permite.</p>
+        </div>
+      </section>
+
+      <section class="grid normal-panel">
+        <article class="card quick-card">
+          <h2>Acciones inmediatas</h2>
+          <div class="button-grid">
+            <a id="callEmergencyBtn" class="secondary button-link" href="tel:112">Llamar 112</a>
+            <button id="shareLocationBtn" class="secondary" type="button">Compartir ubicación</button>
+            <button id="fakeCallBtn" class="secondary" type="button">Falsa llamada</button>
+            <button id="sirenBtn" class="secondary danger-soft" type="button">Sirena / luz</button>
+          </div>
+          <p class="microcopy">La llamada al 112 y el 016 pueden variar según país. Puedes cambiar recursos en Ajustes.</p>
+        </article>
+
+        <article class="card quick-card">
+          <h2>Check-in</h2>
+          <p>Activa un temporizador mientras la app está abierta. Si no lo cancelas, prepara un aviso.</p>
+          <div class="inline-form">
+            <label for="checkinMinutes">Minutos</label>
+            <input id="checkinMinutes" type="number" min="1" max="180" value="10">
+            <button id="startCheckinBtn" class="secondary" type="button">Iniciar</button>
+          </div>
+          <div id="checkinPanel" class="checkin-panel hidden">
+            <strong id="checkinRemaining">--:--</strong>
+            <button id="cancelCheckinBtn" class="ghost" type="button">Cancelar</button>
+          </div>
+        </article>
+      </section>
+
+      <nav class="tabs normal-panel" aria-label="Secciones">
+        <button class="tab active" data-tab="contacts" type="button">Contactos</button>
+        <button class="tab" data-tab="message" type="button">Mensaje</button>
+        <button class="tab" data-tab="settings" type="button">Ajustes</button>
+        <button class="tab" data-tab="about" type="button">Seguridad</button>
+      </nav>
+
+      <section id="contacts" class="tab-panel normal-panel card active">
+        <div class="section-head">
+          <div>
+            <h2>Contactos de confianza</h2>
+            <p>Se guardan solo en este navegador.</p>
+          </div>
+          <button id="clearContactFormBtn" class="ghost" type="button">Nuevo</button>
+        </div>
+        <form id="contactForm" class="contact-form" autocomplete="off">
+          <input type="hidden" id="contactId">
+          <label>Nombre
+            <input id="contactName" name="name" required maxlength="60" placeholder="Ej. Marta">
+          </label>
+          <label>Teléfono / WhatsApp
+            <input id="contactPhone" name="phone" inputmode="tel" placeholder="Ej. +34600111222" autocomplete="tel">
+          </label>
+          <label>Email
+            <input id="contactEmail" name="email" type="email" placeholder="persona@email.com" autocomplete="email">
+          </label>
+          <label>Relación
+            <input id="contactRelation" name="relation" maxlength="60" placeholder="Ej. hermana, vecino, pareja">
+          </label>
+          <label class="checkbox-line">
+            <input id="contactPriority" name="priority" type="checkbox">
+            Marcar como prioritario
+          </label>
+          <button class="primary" type="submit">Guardar contacto</button>
+        </form>
+        <div id="contactsList" class="contacts-list" aria-live="polite"></div>
+      </section>
+
+      <section id="message" class="tab-panel normal-panel card">
+        <h2>Mensaje de emergencia</h2>
+        <p>Personaliza el texto. La ubicación se añadirá automáticamente cuando pulses ayuda.</p>
+        <label>Mensaje base
+          <textarea id="messageTemplate" rows="7" spellcheck="false"></textarea>
+        </label>
+        <div class="row-actions">
+          <button id="saveMessageBtn" class="primary" type="button">Guardar mensaje</button>
+          <button id="previewMessageBtn" class="secondary" type="button">Vista previa</button>
+        </div>
+      </section>
+
+      <section id="settings" class="tab-panel normal-panel card">
+        <h2>Ajustes</h2>
+        <div class="settings-grid">
+          <label>Número de emergencias
+            <input id="emergencyNumber" inputmode="tel" value="112">
+          </label>
+          <label>Recurso de ayuda adicional
+            <input id="supportNumber" inputmode="tel" value="016">
+          </label>
+          <label>WhatsApp recurso de ayuda
+            <input id="supportWhatsapp" inputmode="tel" value="+34600000016">
+          </label>
+          <label>Email recurso de ayuda
+            <input id="supportEmail" type="email" value="016-online@igualdad.gob.es">
+          </label>
+          <label>Nombre de falsa llamada
+            <input id="fakeCallerName" maxlength="60" value="Mamá">
+          </label>
+          <label>Cuenta atrás SOS
+            <select id="countdownSeconds">
+              <option value="3">3 segundos</option>
+              <option value="5" selected>5 segundos</option>
+              <option value="10">10 segundos</option>
+            </select>
+          </label>
+          <label class="checkbox-line">
+            <input id="vibrationEnabled" type="checkbox" checked>
+            Usar vibración si está disponible
+          </label>
+          <label class="checkbox-line">
+            <input id="autoShareAfterCountdown" type="checkbox">
+            Intentar abrir compartir tras la cuenta atrás si el navegador lo permite
+          </label>
+        </div>
+        <div class="row-actions wrap">
+          <button id="saveSettingsBtn" class="primary" type="button">Guardar ajustes</button>
+          <button id="testModeBtn" class="secondary" type="button">Probar sin enviar</button>
+          <button id="exportBtn" class="secondary" type="button">Exportar datos</button>
+          <label class="secondary file-label">Importar datos<input id="importFile" type="file" accept="application/json" hidden></label>
+          <button id="deleteAllBtn" class="danger" type="button">Borrar todo</button>
+        </div>
+      </section>
+
+      <section id="about" class="tab-panel normal-panel card">
+        <h2>Uso seguro y límites reales</h2>
+        <ul class="safety-list">
+          <li>SafeSignal no sustituye a emergencias ni garantiza rescate.</li>
+          <li>Una web no puede enviar SMS, WhatsApp o emails en segundo plano sin confirmación.</li>
+          <li>La ubicación puede fallar si no hay permiso, señal GPS, batería o conexión.</li>
+          <li>Prueba la app antes de necesitarla y guarda contactos reales.</li>
+          <li>En España puedes llamar al 112 para emergencias y al 016 para atención sobre violencia contra las mujeres.</li>
+          <li>El 016 también dispone de WhatsApp y email oficiales; configúralos en Ajustes si usas otros recursos.</li>
+        </ul>
+        <div class="button-grid">
+          <a id="callSupportBtn" class="secondary button-link" href="tel:016">Llamar recurso 016</a>
+          <a id="whatsappSupportBtn" class="secondary button-link" href="https://wa.me/34600000016" target="_blank" rel="noopener">WhatsApp recurso</a>
+          <a id="emailSupportBtn" class="secondary button-link" href="mailto:016-online@igualdad.gob.es">Email recurso</a>
+          <button id="showPermissionsBtn" class="secondary" type="button">Comprobar ubicación</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="countdownModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="countdownTitle">
+    <div class="modal-card urgent">
+      <h2 id="countdownTitle">Preparando aviso</h2>
+      <div id="countdownNumber" class="countdown-number">5</div>
+      <p>Se solicitará ubicación y se abrirá el aviso. Cancela si ha sido un toque accidental.</p>
+      <div class="row-actions center">
+        <button id="cancelCountdownBtn" class="secondary" type="button">Cancelar</button>
+        <button id="sendNowBtn" class="primary" type="button">Preparar ahora</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="alertModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="alertTitle">
+    <div class="modal-card wide">
+      <div class="section-head">
+        <div>
+          <h2 id="alertTitle">Aviso preparado</h2>
+          <p id="alertSubtitle">Revisa y comparte por la app que prefieras.</p>
+        </div>
+        <button id="closeAlertBtn" class="ghost" type="button">Cerrar</button>
+      </div>
+      <textarea id="alertMessage" rows="8" readonly spellcheck="false"></textarea>
+      <div class="row-actions wrap">
+        <button id="nativeShareBtn" class="primary" type="button">Compartir</button>
+        <button id="copyAlertBtn" class="secondary" type="button">Copiar texto</button>
+        <a id="openMapBtn" class="secondary button-link" href="#" target="_blank" rel="noopener">Abrir mapa</a>
+        <a id="callEmergencyModalBtn" class="danger button-link" href="tel:112">Llamar emergencias</a>
+      </div>
+      <h3>Enviar a contactos</h3>
+      <div id="contactActionList" class="contact-actions"></div>
+    </div>
+  </div>
+
+  <div id="fakeCallScreen" class="fake-call hidden" role="dialog" aria-modal="true" aria-label="Llamada falsa">
+    <div class="fake-call-inner safe-area-top safe-area-bottom">
+      <div class="fake-status">Llamada entrante</div>
+      <div id="fakeCallerAvatar" class="fake-avatar">M</div>
+      <h2 id="fakeCallerDisplay">Mamá</h2>
+      <p>Móvil</p>
+      <div class="fake-call-actions">
+        <button id="rejectFakeCallBtn" class="call-btn reject" type="button">Rechazar</button>
+        <button id="acceptFakeCallBtn" class="call-btn accept" type="button">Aceptar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
