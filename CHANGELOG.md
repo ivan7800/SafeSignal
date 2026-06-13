@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0 - Auditoría de robustez
+
+- Eliminado listener duplicado en contactos.
+- Añadido manejo seguro de errores si `localStorage` está bloqueado.
+- Añadido aviso específico cuando la ubicación requiere HTTPS.
+- Actualizada versión de manifest/exportación y caché del service worker.
+
 ## 1.3.0
 
 - Ajustado `manifest.json` a la versión correcta.

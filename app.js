@@ -1,6 +1,8 @@
 'use strict';
 
 const STORAGE_KEY = 'safesignal:v1';
+const APP_VERSION = '1.4.0';
+let storageWarningShown = false;
 const DEFAULT_MESSAGE = `Necesito ayuda. Estoy en una situación de riesgo o no puedo responder.
 
 Mi ubicación aproximada es:
@@ -259,7 +261,15 @@ function mergeState(defaultState, savedState) {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch (error) {
+    console.warn('No se pudo guardar en almacenamiento local.', error);
+    if (!storageWarningShown) {
+      storageWarningShown = true;
+      if (elements?.toast) toast('Aviso: este navegador no permite guardar datos. La sesión seguirá funcionando, pero puede no persistir.');
+    }
+  }
 }
 
 function structuredCloneSafe(value) {
@@ -495,6 +505,12 @@ function buildTestLocation() {
 
 function getLocation({ showToasts = true } = {}) {
   return new Promise((resolve, reject) => {
+    if (!window.isSecureContext && location.protocol !== 'file:') {
+      updateLocationBadge('Necesita HTTPS', 'warning');
+      if (showToasts) toast('Para usar ubicación, abre SafeSignal desde HTTPS, por ejemplo GitHub Pages.');
+      reject(new Error('Geolocation requires secure context'));
+      return;
+    }
     if (!('geolocation' in navigator)) {
       updateLocationBadge('Ubicación no compatible', 'warning');
       if (showToasts) toast('Este navegador no permite obtener ubicación.');
@@ -527,6 +543,10 @@ function locationErrorMessage(error) {
 }
 
 async function checkLocationPermissionSoft() {
+  if (!window.isSecureContext && location.protocol !== 'file:') {
+    updateLocationBadge('Necesita HTTPS', 'warning');
+    return;
+  }
   if (!navigator.permissions?.query) {
     updateLocationBadge('Ubicación bajo permiso', 'muted');
     return;
@@ -860,7 +880,7 @@ function exportData() {
   const exportObject = {
     exportedAt: new Date().toISOString(),
     app: 'SafeSignal',
-    version: '1.3.0',
+    version: APP_VERSION,
     data: state
   };
   const blob = new Blob([JSON.stringify(exportObject, null, 2)], { type: 'application/json' });
@@ -903,7 +923,7 @@ async function importData(event) {
 function deleteAllData() {
   const ok = confirm('Esto borrará contactos, mensaje, ajustes y nota local de este navegador. ¿Seguro?');
   if (!ok) return;
-  localStorage.removeItem(STORAGE_KEY);
+  try { localStorage.removeItem(STORAGE_KEY); } catch (error) { console.warn('No se pudo borrar almacenamiento local.', error); }
   state = structuredCloneSafe(DEFAULT_STATE);
   hydrateUI();
   renderContacts();

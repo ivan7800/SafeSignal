@@ -8,7 +8,7 @@ Está hecha con **HTML, CSS y JavaScript puro**, sin backend, sin login y sin de
 
 ## Funciones
 
-Versión actual: **1.3.0**.
+Versión actual: **1.4.0**.
 
 - Botón SOS con cuenta atrás cancelable.
 - Obtención de ubicación aproximada mediante el navegador.
@@ -126,3 +126,11 @@ Puedes editar:
 ## Licencia
 
 MIT.
+
+
+## Auditoría v1.4
+
+- Se refuerza el guardado local cuando el navegador bloquea `localStorage`.
+- Se muestra aviso claro si la ubicación necesita HTTPS.
+- Se elimina un listener duplicado en la lista de contactos.
+- Caché PWA actualizada para reducir versiones antiguas en GitHub Pages.
