@@ -51,7 +51,7 @@
         <div class="stealth-panel hidden">
           <h1>Notas rápidas</h1>
           <p class="lead">Bloc local sin conexión. Usa Volver o mantén pulsado el título superior para salir.</p>
-          <textarea id="stealthNote" class="stealth-note" placeholder="Escribe una nota privada..." spellcheck="false"></textarea>
+          <textarea id="stealthNote" class="stealth-note" maxlength="2500" placeholder="Escribe una nota privada..." spellcheck="false"></textarea>
           <div class="row-actions">
             <button id="saveStealthNoteBtn" class="secondary" type="button">Guardar nota</button>
             <button id="stealthReturnPanelBtn" class="ghost" type="button">Volver</button>
@@ -116,7 +116,7 @@
             <input id="contactName" name="name" required maxlength="60" placeholder="Ej. Marta">
           </label>
           <label>Teléfono / WhatsApp
-            <input id="contactPhone" name="phone" inputmode="tel" placeholder="Ej. +34600111222" autocomplete="tel">
+            <input id="contactPhone" name="phone" inputmode="tel" maxlength="24" placeholder="Ej. +34600111222" autocomplete="tel">
           </label>
           <label>Email
             <input id="contactEmail" name="email" type="email" placeholder="persona@email.com" autocomplete="email">
@@ -137,7 +137,7 @@
         <h2>Mensaje de emergencia</h2>
         <p>Personaliza el texto. La ubicación se añadirá automáticamente cuando pulses ayuda.</p>
         <label>Mensaje base
-          <textarea id="messageTemplate" rows="7" spellcheck="false"></textarea>
+          <textarea id="messageTemplate" rows="7" maxlength="1600" spellcheck="false"></textarea>
         </label>
         <div class="row-actions">
           <button id="saveMessageBtn" class="primary" type="button">Guardar mensaje</button>
@@ -149,13 +149,13 @@
         <h2>Ajustes</h2>
         <div class="settings-grid">
           <label>Número de emergencias
-            <input id="emergencyNumber" inputmode="tel" value="112">
+            <input id="emergencyNumber" inputmode="tel" maxlength="28" value="112">
           </label>
           <label>Recurso de ayuda adicional
-            <input id="supportNumber" inputmode="tel" value="016">
+            <input id="supportNumber" inputmode="tel" maxlength="28" value="016">
           </label>
           <label>WhatsApp recurso de ayuda
-            <input id="supportWhatsapp" inputmode="tel" value="+34600000016">
+            <input id="supportWhatsapp" inputmode="tel" maxlength="24" value="+34600000016">
           </label>
           <label>Email recurso de ayuda
             <input id="supportEmail" type="email" value="016-online@igualdad.gob.es">
@@ -196,7 +196,7 @@
           <li>La ubicación puede fallar si no hay permiso, señal GPS, batería o conexión.</li>
           <li>Prueba la app antes de necesitarla y guarda contactos reales.</li>
           <li>En España puedes llamar al 112 para emergencias y al 016 para atención sobre violencia contra las mujeres.</li>
-          <li>El 016 también dispone de WhatsApp y email oficiales; configúralos en Ajustes si usas otros recursos.</li>
+          <li>El recurso configurado también puede tener WhatsApp o email; revísalos en Ajustes si usas otros servicios o estás fuera de España.</li>
         </ul>
         <div class="button-grid">
           <a id="callSupportBtn" class="secondary button-link" href="tel:016">Llamar recurso 016</a>
@@ -211,7 +211,7 @@
   <div id="countdownModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="countdownTitle">
     <div class="modal-card urgent">
       <h2 id="countdownTitle">Preparando aviso</h2>
-      <div id="countdownNumber" class="countdown-number">5</div>
+      <div id="countdownNumber" class="countdown-number" aria-live="assertive">5</div>
       <p>Se solicitará ubicación y se abrirá el aviso. Cancela si ha sido un toque accidental.</p>
       <div class="row-actions center">
         <button id="cancelCountdownBtn" class="secondary" type="button">Cancelar</button>

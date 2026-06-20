@@ -8,7 +8,7 @@ Está hecha con **HTML, CSS y JavaScript puro**, sin backend, sin login y sin de
 
 ## Funciones
 
-Versión actual: **1.4.0**.
+Versión actual: **1.5.0**.
 
 - Botón SOS con cuenta atrás cancelable.
 - Obtención de ubicación aproximada mediante el navegador.
@@ -50,12 +50,27 @@ safesignal/
 ├── sw.js
 ├── README.md
 ├── SECURITY.md
+├── CHANGELOG.md
+├── package.json
 ├── LICENSE
+├── tests/
+│   └── smoke-test.js
 └── icons/
     ├── icon-192.png
     ├── icon-512.png
     └── icon-192.svg
 ```
+
+
+## Verificación técnica
+
+Esta versión incluye una prueba estática sin dependencias externas:
+
+```bash
+npm test
+```
+
+La prueba comprueba estructura mínima, sintaxis JavaScript, coherencia del manifest, CSP, ausencia de scripts inline, IDs usados por JavaScript, assets del service worker y consistencia de versión.
 
 ## Cómo usar en local
 
@@ -127,6 +142,13 @@ Puedes editar:
 
 MIT.
 
+
+## Auditoría v1.5
+
+- Se sanea la importación de backups y se limitan datos excesivos.
+- Se valida mejor teléfono/email/contactos y se limita la agenda local a 25 contactos.
+- Se mejora la accesibilidad de modales y la experiencia móvil.
+- Se añade prueba estática `npm test` para revisar el proyecto antes de subirlo a GitHub.
 
 ## Auditoría v1.4
 

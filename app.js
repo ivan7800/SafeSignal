@@ -1,7 +1,10 @@
 'use strict';
 
 const STORAGE_KEY = 'safesignal:v1';
-const APP_VERSION = '1.4.0';
+const APP_VERSION = '1.5.0';
+const MAX_CONTACTS = 25;
+const MAX_MESSAGE_LENGTH = 1600;
+const MAX_NOTE_LENGTH = 2500;
 let storageWarningShown = false;
 const DEFAULT_MESSAGE = `Necesito ayuda. Estoy en una situación de riesgo o no puedo responder.
 
@@ -158,7 +161,7 @@ function bindEvents() {
   elements.hiddenSignalBtn.addEventListener('click', () => toast('Mantén pulsado para acción rápida.'));
 
   elements.saveStealthNoteBtn.addEventListener('click', () => {
-    state.stealthNote = elements.stealthNote.value.trim();
+    state.stealthNote = sanitizePlainText(elements.stealthNote.value, MAX_NOTE_LENGTH);
     saveState();
     toast('Nota guardada en este dispositivo.');
   });
@@ -211,6 +214,7 @@ function bindEvents() {
 
   $$('.tab').forEach((tab) => tab.addEventListener('click', () => switchTab(tab.dataset.tab)));
   document.addEventListener('keydown', (event) => {
+    keepFocusInsideDialog(event);
     if (event.key === 'Escape') {
       closeCountdown();
       closeAlert();
@@ -251,14 +255,76 @@ function loadState() {
   }
 }
 
-function mergeState(defaultState, savedState) {
+function mergeState(defaultState, savedState = {}) {
+  const safeState = isPlainObject(savedState) ? savedState : {};
+  const savedSettings = isPlainObject(safeState.settings) ? safeState.settings : {};
   return {
-    contacts: Array.isArray(savedState.contacts) ? savedState.contacts : [],
-    messageTemplate: typeof savedState.messageTemplate === 'string' ? savedState.messageTemplate : defaultState.messageTemplate,
-    settings: { ...defaultState.settings, ...(savedState.settings || {}) },
-    stealthNote: typeof savedState.stealthNote === 'string' ? savedState.stealthNote : ''
+    contacts: normalizeContacts(safeState.contacts),
+    messageTemplate: sanitizeTemplate(typeof safeState.messageTemplate === 'string' ? safeState.messageTemplate : defaultState.messageTemplate) || defaultState.messageTemplate,
+    settings: normalizeSettings({ ...defaultState.settings, ...savedSettings }),
+    stealthNote: sanitizePlainText(safeState.stealthNote, MAX_NOTE_LENGTH)
   };
 }
+
+function isPlainObject(value) {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function sanitizePlainText(value, maxLength = 120) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .trim()
+    .slice(0, maxLength);
+}
+
+function normalizeSettings(value = {}) {
+  return {
+    emergencyNumber: normalizeDialValue(value.emergencyNumber) || '112',
+    supportNumber: normalizeDialValue(value.supportNumber) || '016',
+    supportWhatsapp: normalizePhone(value.supportWhatsapp) || '+34600000016',
+    supportEmail: isValidEmail(normalizeEmail(value.supportEmail)) ? normalizeEmail(value.supportEmail) : '016-online@igualdad.gob.es',
+    fakeCallerName: sanitizePlainText(value.fakeCallerName, 60) || 'Mamá',
+    countdownSeconds: normalizeCountdown(value.countdownSeconds, 5),
+    vibrationEnabled: value.vibrationEnabled !== false,
+    autoShareAfterCountdown: value.autoShareAfterCountdown === true,
+    stealthMode: value.stealthMode === true
+  };
+}
+
+function normalizeContacts(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  return value
+    .slice(0, MAX_CONTACTS)
+    .map((entry) => normalizeContact(entry))
+    .filter(Boolean)
+    .filter((contact) => {
+      if (seen.has(contact.id)) return false;
+      seen.add(contact.id);
+      return true;
+    })
+    .sort((a, b) => Number(b.priority) - Number(a.priority) || a.name.localeCompare(b.name));
+}
+
+function normalizeContact(entry) {
+  if (!isPlainObject(entry)) return null;
+  const name = sanitizePlainText(entry.name, 60);
+  const phone = normalizePhone(entry.phone);
+  const email = normalizeEmail(entry.email);
+  if (!name || (!phone && !email)) return null;
+  if (phone && !isUsablePhone(phone)) return null;
+  if (email && !isValidEmail(email)) return null;
+  return {
+    id: sanitizePlainText(entry.id, 80) || cryptoRandomId(),
+    name,
+    phone,
+    email,
+    relation: sanitizePlainText(entry.relation, 60),
+    priority: entry.priority === true,
+    createdAt: sanitizePlainText(entry.createdAt, 40) || new Date().toISOString()
+  };
+}
+
 
 function saveState() {
   try {
@@ -277,18 +343,22 @@ function structuredCloneSafe(value) {
 }
 
 function sanitizeTemplate(text) {
-  return String(text || '').trim().slice(0, 1600);
+  return sanitizePlainText(text, MAX_MESSAGE_LENGTH);
 }
 
 function saveSettingsFromForm() {
-  state.settings.emergencyNumber = normalizeDialValue(elements.emergencyNumber.value) || '112';
-  state.settings.supportNumber = normalizeDialValue(elements.supportNumber.value) || '016';
-  state.settings.supportWhatsapp = normalizePhone(elements.supportWhatsapp.value) || '+34600000016';
-  state.settings.supportEmail = normalizeEmail(elements.supportEmail.value) || '016-online@igualdad.gob.es';
-  state.settings.fakeCallerName = elements.fakeCallerName.value.trim().slice(0, 60) || 'Mamá';
-  state.settings.countdownSeconds = normalizeCountdown(elements.countdownSeconds.value, 5);
-  state.settings.vibrationEnabled = elements.vibrationEnabled.checked;
-  state.settings.autoShareAfterCountdown = elements.autoShareAfterCountdown.checked;
+  state.settings = normalizeSettings({
+    emergencyNumber: elements.emergencyNumber.value,
+    supportNumber: elements.supportNumber.value,
+    supportWhatsapp: elements.supportWhatsapp.value,
+    supportEmail: elements.supportEmail.value,
+    fakeCallerName: elements.fakeCallerName.value,
+    countdownSeconds: elements.countdownSeconds.value,
+    vibrationEnabled: elements.vibrationEnabled.checked,
+    autoShareAfterCountdown: elements.autoShareAfterCountdown.checked,
+    stealthMode: state.settings.stealthMode
+  });
+  hydrateUI();
   saveState();
   updateEmergencyLinks();
   toast('Ajustes guardados.');
@@ -302,9 +372,12 @@ function updateEmergencyLinks() {
   elements.callEmergencyBtn.href = `tel:${emergency}`;
   elements.callEmergencyModalBtn.href = `tel:${emergency}`;
   elements.callSupportBtn.href = `tel:${support}`;
-  elements.whatsappSupportBtn.href = supportWhatsapp ? buildWhatsAppLink(supportWhatsapp, 'Necesito información o ayuda.') : '#';
+  const whatsappHref = isValidWhatsAppPhone(supportWhatsapp) ? buildWhatsAppLink(supportWhatsapp, 'Necesito información o ayuda.') : '#';
+  elements.whatsappSupportBtn.href = whatsappHref;
+  elements.whatsappSupportBtn.setAttribute('aria-disabled', String(whatsappHref === '#'));
   elements.emailSupportBtn.href = supportEmail ? `mailto:${supportEmail}` : '#';
 }
+
 
 function normalizeDialValue(value) {
   return String(value || '').replace(/[^\d+()\-\s#*]/g, '').trim().slice(0, 28);
@@ -325,11 +398,11 @@ function normalizeCountdown(value, fallback = 5) {
 
 function saveContactFromForm(event) {
   event.preventDefault();
-  const id = elements.contactId.value || cryptoRandomId();
-  const name = elements.contactName.value.trim().slice(0, 60);
+  const id = sanitizePlainText(elements.contactId.value, 80) || cryptoRandomId();
+  const name = sanitizePlainText(elements.contactName.value, 60);
   const phone = normalizePhone(elements.contactPhone.value);
   const email = normalizeEmail(elements.contactEmail.value);
-  const relation = elements.contactRelation.value.trim().slice(0, 60);
+  const relation = sanitizePlainText(elements.contactRelation.value, 60);
   const priority = elements.contactPriority.checked;
 
   if (!name) {
@@ -340,8 +413,16 @@ function saveContactFromForm(event) {
     toast('Añade teléfono, WhatsApp o email.');
     return;
   }
+  if (phone && !isUsablePhone(phone)) {
+    toast('El teléfono debe tener entre 6 y 15 dígitos.');
+    return;
+  }
   if (email && !isValidEmail(email)) {
     toast('El email no parece válido.');
+    return;
+  }
+  if (state.contacts.length >= MAX_CONTACTS && !state.contacts.some((item) => item.id === id)) {
+    toast(`Límite alcanzado: máximo ${MAX_CONTACTS} contactos.`);
     return;
   }
 
@@ -424,8 +505,26 @@ function clearContactForm() {
 }
 
 function normalizePhone(value) {
-  return String(value || '').replace(/[^+\d]/g, '').slice(0, 24);
+  const cleaned = String(value || '').replace(/[^+\d]/g, '').slice(0, 24);
+  if (!cleaned) return '';
+  const withSinglePlus = cleaned.startsWith('+') ? `+${cleaned.slice(1).replace(/\+/g, '')}` : cleaned.replace(/\+/g, '');
+  return withSinglePlus;
 }
+
+function countPhoneDigits(value) {
+  return String(value || '').replace(/\D/g, '').length;
+}
+
+function isUsablePhone(value) {
+  const digits = countPhoneDigits(value);
+  return digits >= 6 && digits <= 15;
+}
+
+function isValidWhatsAppPhone(value) {
+  const digits = countPhoneDigits(value);
+  return digits >= 8 && digits <= 15;
+}
+
 
 function cryptoRandomId() {
   if (window.crypto?.randomUUID) return window.crypto.randomUUID();
@@ -438,7 +537,7 @@ function startPanicFlow({ source = 'tap' } = {}) {
   const seconds = Number(state.settings.countdownSeconds) || 5;
   let remaining = seconds;
   elements.countdownNumber.textContent = String(remaining);
-  elements.countdownModal.classList.remove('hidden');
+  openModal(elements.countdownModal, elements.cancelCountdownBtn);
   vibrate([120, 80, 120]);
 
   countdownTimer = setInterval(() => {
@@ -452,14 +551,17 @@ function startPanicFlow({ source = 'tap' } = {}) {
 }
 
 function saveSettingsFromFormQuietly() {
-  state.settings.emergencyNumber = normalizeDialValue(elements.emergencyNumber.value) || state.settings.emergencyNumber || '112';
-  state.settings.supportNumber = normalizeDialValue(elements.supportNumber.value) || state.settings.supportNumber || '016';
-  state.settings.supportWhatsapp = normalizePhone(elements.supportWhatsapp.value) || state.settings.supportWhatsapp || '+34600000016';
-  state.settings.supportEmail = normalizeEmail(elements.supportEmail.value) || state.settings.supportEmail || '016-online@igualdad.gob.es';
-  state.settings.fakeCallerName = elements.fakeCallerName.value.trim().slice(0, 60) || state.settings.fakeCallerName || 'Mamá';
-  state.settings.countdownSeconds = normalizeCountdown(elements.countdownSeconds.value, state.settings.countdownSeconds || 5);
-  state.settings.vibrationEnabled = elements.vibrationEnabled.checked;
-  state.settings.autoShareAfterCountdown = elements.autoShareAfterCountdown.checked;
+  state.settings = normalizeSettings({
+    ...state.settings,
+    emergencyNumber: elements.emergencyNumber.value,
+    supportNumber: elements.supportNumber.value,
+    supportWhatsapp: elements.supportWhatsapp.value,
+    supportEmail: elements.supportEmail.value,
+    fakeCallerName: elements.fakeCallerName.value,
+    countdownSeconds: elements.countdownSeconds.value,
+    vibrationEnabled: elements.vibrationEnabled.checked,
+    autoShareAfterCountdown: elements.autoShareAfterCountdown.checked
+  });
   saveState();
   updateEmergencyLinks();
 }
@@ -467,7 +569,7 @@ function saveSettingsFromFormQuietly() {
 function closeCountdown() {
   if (countdownTimer) clearInterval(countdownTimer);
   countdownTimer = null;
-  elements.countdownModal.classList.add('hidden');
+  closeModal(elements.countdownModal);
 }
 
 async function prepareAlert({ mode = 'real', source = 'manual', skipCountdown = false } = {}) {
@@ -602,12 +704,11 @@ function openAlertModal(payload, { mode }) {
   elements.openMapBtn.href = payload.hasLocation ? payload.mapLink : '#';
   elements.openMapBtn.classList.toggle('hidden', !payload.hasLocation);
   renderContactActions(payload);
-  elements.alertModal.classList.remove('hidden');
-  setTimeout(() => elements.nativeShareBtn.focus(), 60);
+  openModal(elements.alertModal, elements.nativeShareBtn);
 }
 
 function closeAlert() {
-  elements.alertModal.classList.add('hidden');
+  closeModal(elements.alertModal);
 }
 
 function renderContactActions(payload) {
@@ -619,14 +720,14 @@ function renderContactActions(payload) {
     const phone = contact.phone || '';
     const email = contact.email || '';
     const smsLink = phone ? buildSmsLink(phone, payload.text) : '';
-    const whatsappLink = phone ? buildWhatsAppLink(phone, payload.text) : '';
+    const whatsappLink = phone && isValidWhatsAppPhone(phone) ? buildWhatsAppLink(phone, payload.text) : '';
     const emailLink = email ? buildEmailLink(email, payload.text) : '';
     return `
       <article class="contact-action-item" data-id="${escapeAttr(contact.id)}">
         <strong>${escapeHtml(contact.name)} ${contact.priority ? '<span class="badge">Prioritario</span>' : ''}</strong>
         <div class="contact-buttons">
           ${phone ? `<a class="secondary button-link" href="${escapeAttr(smsLink)}">SMS</a>` : ''}
-          ${phone ? `<a class="secondary button-link" href="${escapeAttr(whatsappLink)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
+          ${whatsappLink ? `<a class="secondary button-link" href="${escapeAttr(whatsappLink)}" target="_blank" rel="noopener">WhatsApp</a>` : ''}
           ${email ? `<a class="secondary button-link" href="${escapeAttr(emailLink)}">Email</a>` : ''}
           ${phone ? `<a class="danger button-link" href="tel:${escapeAttr(phone)}">Llamar</a>` : ''}
         </div>
@@ -646,7 +747,8 @@ function isIOSDevice() {
 }
 
 function buildWhatsAppLink(phone, text) {
-  const digits = phone.replace(/\D/g, '');
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (!digits) return '#';
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
 
@@ -779,7 +881,7 @@ function startFakeCall() {
   const name = state.settings.fakeCallerName || 'Mamá';
   elements.fakeCallerDisplay.textContent = name;
   elements.fakeCallerAvatar.textContent = name.trim().charAt(0).toUpperCase() || 'M';
-  elements.fakeCallScreen.classList.remove('hidden');
+  openModal(elements.fakeCallScreen, elements.rejectFakeCallBtn);
   vibrate([450, 300, 450, 600]);
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -803,7 +905,7 @@ function startFakeCall() {
 }
 
 function stopFakeCall() {
-  elements.fakeCallScreen.classList.add('hidden');
+  closeModal(elements.fakeCallScreen);
   if (fakeCall.interval) clearInterval(fakeCall.interval);
   try { fakeCall.osc?.stop(); } catch {}
   try { fakeCall.ctx?.close(); } catch {}
@@ -830,7 +932,48 @@ function applyStealthMode(enabled) {
   document.title = active ? 'Notas' : 'SafeSignal';
 }
 
+function openModal(modal, focusTarget) {
+  if (!modal) return;
+  modal.dataset.previousFocus = document.activeElement?.id || '';
+  modal.classList.remove('hidden');
+  document.body.classList.add('modal-open');
+  setTimeout(() => focusTarget?.focus?.(), 40);
+}
+
+function closeModal(modal) {
+  if (!modal) return;
+  const previousFocusId = modal.dataset.previousFocus;
+  modal.classList.add('hidden');
+  if (!document.querySelector('.modal:not(.hidden), .fake-call:not(.hidden)')) {
+    document.body.classList.remove('modal-open');
+  }
+  if (previousFocusId) document.getElementById(previousFocusId)?.focus?.();
+}
+
+function getActiveDialog() {
+  return document.querySelector('.modal:not(.hidden), .fake-call:not(.hidden)');
+}
+
+function keepFocusInsideDialog(event) {
+  if (event.key !== 'Tab') return;
+  const dialog = getActiveDialog();
+  if (!dialog) return;
+  const focusable = Array.from(dialog.querySelectorAll('button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])'))
+    .filter((node) => !node.disabled && node.offsetParent !== null);
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 function bindLongPress(target, callback, delay = 1200) {
+  if (!target) return;
   let timer = null;
   let fired = false;
   const start = (event) => {
@@ -857,6 +1000,7 @@ function bindLongPress(target, callback, delay = 1200) {
 }
 
 function bindMultiTap(target, callback, { taps = 3, windowMs = 1200 } = {}) {
+  if (!target) return;
   let count = 0;
   let timer = null;
   target.addEventListener('click', () => {
@@ -899,6 +1043,7 @@ async function importData(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   try {
+    if (file.size > 120000) throw new Error('Backup too large');
     const text = await file.text();
     const parsed = JSON.parse(text);
     const imported = parsed.data || parsed;

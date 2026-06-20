@@ -1,0 +1,10 @@
+{
+  "name": "safesignal",
+  "version": "1.5.0",
+  "private": true,
+  "description": "PWA estática de asistencia rápida, discreta y privada.",
+  "scripts": {
+    "test": "node tests/smoke-test.js",
+    "serve": "python -m http.server 8080"
+  }
+}

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.5.0
+
+- Saneamiento más estricto de backups importados, contactos, notas y plantillas.
+- Validación de teléfonos/contactos y límite de 25 contactos locales.
+- Mejor accesibilidad de modales: foco inicial, bloqueo de scroll y trampa básica de tabulación.
+- Mejoras móviles en topbar, botones, safe-area y modales.
+- Service worker actualizado a caché v15.
+- Añadido `package.json` y smoke test sin dependencias para GitHub.
+
+
 ## 1.4.0 - Auditoría de robustez
 
 - Eliminado listener duplicado en contactos.
